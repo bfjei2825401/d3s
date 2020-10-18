@@ -799,8 +799,8 @@ class SegmSK(BaseTracker):
 
         # network was renamed therefore we need to specify constructor_module and constructor_fun_name
         segm_net, _ = load_network(self.params.segm_net_path, backbone_pretrained=False,
-                                   constructor_module='ltr.models.segm.segm',
-                                   constructor_fun_name='segm_resnet50')
+                                   constructor_module='ltr.models.segm_sk.segm_sk',
+                                   constructor_fun_name='segm_sk_resnet50')
 
         if self.params.use_gpu:
             segm_net.cuda()
