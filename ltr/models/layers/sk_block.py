@@ -30,7 +30,7 @@ def init_net(net, gpu_ids=[]):
 
 
 class SKConv(nn.Module):
-    def __init__(self, features, M=2, r=4, G=2, stride=1, L=32):
+    def __init__(self, features, M=2, r=2, G=1, stride=1, L=8):
         super(SKConv, self).__init__()
         d = max(int(features / r), L)
         self.M = M
