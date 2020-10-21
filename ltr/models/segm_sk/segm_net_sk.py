@@ -74,9 +74,7 @@ class SegmNetSK(nn.Module):
         out = self.mixer(segm_layers)
         out = self.s3(F.upsample(out, scale_factor=2))
 
-        out = self.sk2(out)
-
-        out = self.post2(F.upsample(self.f2(feat_test[2]) + self.s2(out), scale_factor=2))
+        out = self.post2(F.upsample(self.f2(feat_test[2]) + self.sk2(self.s2(out)), scale_factor=2))
         out = self.post1(F.upsample(self.f1(feat_test[1]) + self.sk1(self.s1(out)), scale_factor=2))
         out = self.post0(F.upsample(self.f0(feat_test[0]) + self.sk0(self.s0(out)), scale_factor=2))
 

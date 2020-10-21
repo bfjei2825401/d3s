@@ -30,7 +30,6 @@ class SegmNetSKBefore(nn.Module):
         self.post1 = conv(segm_inter_dim[1], segm_inter_dim[0])
         self.post0 = conv_no_relu(segm_inter_dim[0], 2)
 
-        self.sk_mixer = SKConv(segm_inter_dim[3])
         self.sk2 = SKConv(segm_inter_dim[2])
         self.sk1 = SKConv(segm_inter_dim[1])
         self.sk0 = SKConv(segm_inter_dim[0])
@@ -73,7 +72,6 @@ class SegmNetSKBefore(nn.Module):
                                     dim=1)
 
         out = self.mixer(segm_layers)
-        out = self.sk_mixer(out)
         out = self.s3(F.upsample(out, scale_factor=2))
 
         out = self.post2(F.upsample(self.sk2(self.f2(feat_test[2]) + self.s2(out)), scale_factor=2))
