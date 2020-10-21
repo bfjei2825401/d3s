@@ -98,7 +98,9 @@ def parameters():
 
     params.use_segmentation = True
 
-    params.segm_net_path = '/home/slz/GitHub/d3s/save/checkpoints/ltr/segm_sk_before/segm_sk_before_default/SegmNet_ep0036.pth.tar'
+    params.segm_net_path = '/home/slz/GitHub/d3s/save/checkpoints/ltr/segm_sk_before/segm_sk_before_default/SegmNet_ep0040.pth.tar'
+    params.constructor_module = 'ltr.models.segm_sk_before.segm_sk_before'
+    params.constructor_fun_name = 'segm_sk_before_resnet50'
     params.segm_use_dist = True
     params.segm_normalize_mean = [0.485, 0.456, 0.406]
     params.segm_normalize_std = [0.229, 0.224, 0.225]

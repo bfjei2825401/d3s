@@ -1,35 +1,8 @@
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-import numpy as np
 from ltr.models.layers.sk_block import SKConv
-
-
-def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
-    return nn.Sequential(
-        nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
-                  padding=padding, dilation=dilation, bias=True),
-        nn.BatchNorm2d(out_planes),
-        nn.ReLU(inplace=True))
-
-
-def conv_no_relu(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
-    return nn.Sequential(
-        nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
-                  padding=padding, dilation=dilation, bias=True),
-        nn.BatchNorm2d(out_planes))
-
-
-def valid_roi(roi: torch.Tensor, image_size: torch.Tensor):
-    valid = all(0 <= roi[:, 1]) and all(0 <= roi[:, 2]) and all(roi[:, 3] <= image_size[0] - 1) and \
-            all(roi[:, 4] <= image_size[1] - 1)
-    return valid
-
-
-def normalize_vis_img(x):
-    x = x - np.min(x)
-    x = x / np.max(x)
-    return (x * 255).astype(np.uint8)
+from ltr.models.layers.common_block import conv, conv_no_relu
 
 
 class SegmNetSKBefore(nn.Module):

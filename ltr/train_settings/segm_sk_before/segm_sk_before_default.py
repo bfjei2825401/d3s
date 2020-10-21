@@ -6,7 +6,7 @@ import torchvision.transforms
 
 from ltr.dataset import Vos
 from ltr.data import segm_processing, segm_sampler, LTRLoader
-import ltr.models.segm_sk_before.segm_sk_before as segm_sk_before_models
+import ltr.models.segm_sk_before.segm_sk_before as models
 from ltr import actors
 from ltr.trainers import LTRTrainer
 import ltr.data.transforms as dltransforms
@@ -102,8 +102,8 @@ def run(settings):
 
     # Create network
     # resnet50 or resnet18
-    net = segm_sk_before_models.segm_sk_before_resnet50(backbone_pretrained=True, topk_pos=settings.segm_topk_pos,
-                                                        topk_neg=settings.segm_topk_neg, mixer_channels=mixer_channels)
+    net = models.segm_sk_before_resnet50(backbone_pretrained=True, topk_pos=settings.segm_topk_pos,
+                                         topk_neg=settings.segm_topk_neg, mixer_channels=mixer_channels)
 
     # Set objective
     objective = nn.BCEWithLogitsLoss()
