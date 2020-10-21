@@ -6,7 +6,7 @@ os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 from pytracking.tracker.segm_sk_before import SegmSKBefore
-from pytracking.parameter.segm_sk_before import default_params as vot_params
+from pytracking.parameter.segm_sk_before import finetune_params as vot_params
 
 
 def rect_to_poly(rect):
