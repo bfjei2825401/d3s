@@ -11,7 +11,7 @@ from pytracking import dcf, fourier, TensorList, operation
 from pytracking.features.preprocessing import numpy_to_torch
 from pytracking.utils.plotting import show_tensor
 from pytracking.libs.optimization import GaussNewtonCG, ConjugateGradient, GradientDescentL2
-from .optim import ConvProblem, FactorizedConvProblem
+from ..segm.optim import ConvProblem, FactorizedConvProblem
 from pytracking.features import augmentation
 import ltr.data.processing_utils as prutils
 from ltr import load_network
@@ -20,13 +20,7 @@ from pytracking.bbox_fit import fit_bbox_to_mask
 from pytracking.mask_to_disk import save_mask
 
 
-class SegmNew(BaseTracker):
-
-    def __init__(self, params):
-        super(SegmNew, self).__init__(params)
-        self.constructor_module = params.constructor_module
-        self.constructor_fun_name = params.constructor_fun_name
-
+class SegmSKBefore(BaseTracker):
     def initialize_features(self):
         if not getattr(self, 'features_initialized', False):
             self.params.features_filter.initialize()
@@ -805,8 +799,8 @@ class SegmNew(BaseTracker):
 
         # network was renamed therefore we need to specify constructor_module and constructor_fun_name
         segm_net, _ = load_network(self.params.segm_net_path, backbone_pretrained=False,
-                                   constructor_module=self.constructor_fun_name,
-                                   constructor_fun_name=self.constructor_fun_name)
+                                   constructor_module='ltr.models.segm_sk_before.segm_sk_before',
+                                   constructor_fun_name='segm_sk_before_resnet50')
 
         if self.params.use_gpu:
             segm_net.cuda()

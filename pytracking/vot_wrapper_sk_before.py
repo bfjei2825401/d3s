@@ -5,7 +5,7 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from pytracking.tracker.segm import SegmNew
+from pytracking.tracker.segm_sk_before import se
 from pytracking.parameter.segm_sk_before import default_params as vot_params
 
 
@@ -51,7 +51,7 @@ frame_name = parse_frame_name(imagefile, idx_)
 params.masks_save_path = ''
 params.save_mask = False
 
-tracker = SegmNew(params)
+tracker = segm_sk(params)
 
 # tell the sequence name to the tracker (to save segmentation masks to the disk)
 tracker.sequence_name = sequence_name
