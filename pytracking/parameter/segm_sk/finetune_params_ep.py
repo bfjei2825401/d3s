@@ -1,4 +1,4 @@
-from pytracking.parameter.segm import finetune_params
+from pytracking.parameter.segm_sk import finetune_params
 
 
 def parameters(ep_num):
