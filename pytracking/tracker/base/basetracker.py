@@ -1,6 +1,6 @@
 import matplotlib
 
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import cv2 as cv
