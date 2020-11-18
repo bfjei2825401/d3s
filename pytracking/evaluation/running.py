@@ -11,7 +11,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False):
     base_results_path = '{}/{}'.format(tracker.results_dir, seq.name)
     results_path = '{}.txt'.format(base_results_path)
     times_path = '{}_time.txt'.format(base_results_path)
-
+    print(results_path)
     if os.path.isfile(results_path) and not debug:
         return
 
