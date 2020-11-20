@@ -365,7 +365,7 @@ class SKConv3x3Max(nn.Module):
             else:
                 feas = torch.cat([feas, fea], dim=1)
         fea_U = torch.sum(feas, dim=1)
-        fea_s = fea_U.max(-1).max(-1)
+        fea_s = fea_U.max(-1)[0].max(-1)[0]
         fea_z = self.fc(fea_s)
         for i, fc in enumerate(self.fcs):
             vector = fc(fea_z).unsqueeze_(dim=1)
