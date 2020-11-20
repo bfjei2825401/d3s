@@ -1,11 +1,12 @@
 import matplotlib
-# matplotlib.use('Agg')
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 
-def show_tensor(a: torch.Tensor, fig_num = None, title = None):
+def show_tensor(a: torch.Tensor, fig_num=None, title=None):
     """Display a 2D tensor.
     args:
         fig_num: Figure number.
@@ -26,7 +27,7 @@ def show_tensor(a: torch.Tensor, fig_num = None, title = None):
     plt.pause(0.001)
 
 
-def plot_graph(a: torch.Tensor, fig_num = None, title = None):
+def plot_graph(a: torch.Tensor, fig_num=None, title=None):
     """Plot graph. Data is a 1D tensor.
     args:
         fig_num: Figure number.
