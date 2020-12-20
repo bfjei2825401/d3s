@@ -6,7 +6,7 @@ from ltr.models.segm.segm import SegmNet
 
 @model_constructor
 def segm_sk_meanmax_resnet18(segm_input_dim=(256, 256), segm_inter_dim=(256, 256), backbone_pretrained=True, topk_pos=3,
-                             topk_neg=3, mixer_channels=2):
+                             topk_neg=3, mixer_channels=2, scale_num=2):
     # backbone
     backbone_net = backbones.resnet18(pretrained=backbone_pretrained)
 
@@ -21,7 +21,8 @@ def segm_sk_meanmax_resnet18(segm_input_dim=(256, 256), segm_inter_dim=(256, 256
                                              segm_dim=segm_dim,
                                              topk_pos=topk_pos,
                                              topk_neg=topk_neg,
-                                             mixer_channels=mixer_channels)
+                                             mixer_channels=mixer_channels,
+                                             scale_num=scale_num)
 
     net = SegmNet(feature_extractor=backbone_net, segm_predictor=segm_predictor,
                   segm_layers=['conv1', 'layer1', 'layer2', 'layer3'], extractor_grad=False)
@@ -31,7 +32,7 @@ def segm_sk_meanmax_resnet18(segm_input_dim=(256, 256), segm_inter_dim=(256, 256
 
 @model_constructor
 def segm_sk_meanmax_resnet50(segm_input_dim=(256, 256), segm_inter_dim=(256, 256), backbone_pretrained=True, topk_pos=3,
-                             topk_neg=3, mixer_channels=2):
+                             topk_neg=3, mixer_channels=2, scale_num=2):
     # backbone
     backbone_net = backbones.resnet50(pretrained=backbone_pretrained)
 
@@ -46,7 +47,8 @@ def segm_sk_meanmax_resnet50(segm_input_dim=(256, 256), segm_inter_dim=(256, 256
                                              segm_dim=segm_dim,
                                              topk_pos=topk_pos,
                                              topk_neg=topk_neg,
-                                             mixer_channels=mixer_channels)
+                                             mixer_channels=mixer_channels,
+                                             scale_num=scale_num)
 
     net = SegmNet(feature_extractor=backbone_net, segm_predictor=segm_predictor,
                   segm_layers=['conv1', 'layer1', 'layer2', 'layer3'], extractor_grad=False)  # extractor_grad=False

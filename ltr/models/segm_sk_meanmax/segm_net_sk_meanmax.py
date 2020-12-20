@@ -9,7 +9,7 @@ class SegmNetSKMeanMax(nn.Module):
     """ Network module for IoU prediction. Refer to the paper for an illustration of the architecture."""
 
     def __init__(self, segm_input_dim=(128, 256), segm_inter_dim=(256, 256), segm_dim=(64, 64), mixer_channels=2,
-                 topk_pos=3, topk_neg=3):
+                 topk_pos=3, topk_neg=3, scale_num=2):
         super().__init__()
 
         self.segment0 = conv(segm_input_dim[3], segm_dim[0], kernel_size=1, padding=0)
@@ -30,9 +30,9 @@ class SegmNetSKMeanMax(nn.Module):
         self.post1 = conv(segm_inter_dim[1], segm_inter_dim[0])
         self.post0 = conv_no_relu(segm_inter_dim[0], 2)
 
-        self.sk2 = SKConvMeanMax(segm_inter_dim[2])
-        self.sk1 = SKConvMeanMax(segm_inter_dim[1])
-        self.sk0 = SKConvMeanMax(segm_inter_dim[0])
+        self.sk2 = SKConvMeanMax(segm_inter_dim[2], M=scale_num)
+        self.sk1 = SKConvMeanMax(segm_inter_dim[1], M=scale_num)
+        self.sk0 = SKConvMeanMax(segm_inter_dim[0], M=scale_num)
 
         # Init weights
         for m in self.modules():
