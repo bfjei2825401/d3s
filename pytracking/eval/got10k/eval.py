@@ -5,7 +5,7 @@ import importlib
 
 
 class SegmEvalTracker(EvalTracker):
-    def __init__(self, name: str, parameter_name: str, tracker_module_name: str):
+    def __init__(self, name: str, parameter_name: str, tracker_module_name: str, ep_num: int):
         super(SegmEvalTracker, self).__init__(name=name)
         self.name = name
         self.parameter_name = parameter_name
@@ -13,7 +13,7 @@ class SegmEvalTracker(EvalTracker):
         tracker_module = importlib.import_module('pytracking.tracker.{}'.format(tracker_module_name))
         param_module = importlib.import_module(
             'pytracking.parameter.{}.{}'.format(tracker_module_name, self.parameter_name))
-        self.parameters = param_module.parameters()
+        self.parameters = param_module.parameters(ep_num)
         self.tracker_class = tracker_module.get_tracker_class()
         self.tracker = self.tracker_class(self.parameters)
 
@@ -25,7 +25,8 @@ class SegmEvalTracker(EvalTracker):
 
 
 def main():
-    trackers = [SegmEvalTracker('SegmSKMeanMax', 'default_params_ep0021', 'segm_sk_meanmax')]
+    trackers = [SegmEvalTracker('SegmSKMaxEp00{:02d}'.format(i), 'default_params_ep',
+                                'segm_sk_max', i) for i in range(26, 27)]
 
     # run experiments on GOT-10k (validation subset)
     experiment = ExperimentGOT10k('/home/slz/GitHub/d3s/dataset/GOT10k',
