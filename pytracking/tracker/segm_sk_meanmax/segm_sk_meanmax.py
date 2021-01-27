@@ -17,7 +17,8 @@ import ltr.data.processing_utils as prutils
 from ltr import load_network
 
 from pytracking.bbox_fit import fit_bbox_to_mask
-from pytracking.mask_to_disk import save_mask
+# from pytracking.mask_to_disk import save_mask
+from pytracking.mask_image_to_disk import save_mask
 
 
 class SegmSKMeanMax(BaseTracker):
@@ -883,8 +884,10 @@ class SegmSKMeanMax(BaseTracker):
 
                 if self.params.save_mask:
                     segm_crop_sz = math.ceil(math.sqrt(bb[2] * bb[3]) * self.params.segm_search_area_factor)
-                    save_mask(None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                    save_mask(image, None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
                               self.params.masks_save_path, self.sequence_name, self.frame_name)
+                    # save_mask(None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                    #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
                 mask_gpu = torch.unsqueeze(torch.unsqueeze(torch.tensor(mask), dim=0), dim=0).to(self.params.device)
                 train_masks = [mask_gpu]
@@ -975,8 +978,10 @@ class SegmSKMeanMax(BaseTracker):
             # save mask to disk
             # Note: move this below if evaluating on VOT
             if self.params.save_mask:
-                save_mask(None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                save_mask(image, None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
                           self.params.masks_save_path, self.sequence_name, self.frame_name)
+                # save_mask(None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
         if len(cnt_area) > 0 and len(contours) != 0 and np.max(cnt_area) > 50:  # 1000:
             contour = contours[np.argmax(cnt_area)]  # use max area polygon
@@ -994,8 +999,10 @@ class SegmSKMeanMax(BaseTracker):
                     # save mask to disk
                     # Note: move this below if evaluating on VOT
                     if self.params.save_mask:
-                        save_mask(mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                        save_mask(image, mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
                                   self.params.masks_save_path, self.sequence_name, self.frame_name)
+                        # save_mask(mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                        #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
                 t_opt_start_ = time.time()
                 prbox_opt_ = fit_bbox_to_mask(mask.astype(np.int32), rotated=self.rotated_bbox)

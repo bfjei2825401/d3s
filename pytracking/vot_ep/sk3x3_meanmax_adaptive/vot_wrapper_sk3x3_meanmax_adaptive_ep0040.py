@@ -5,8 +5,8 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-from pytracking.tracker.segm_sk_meanmax import SegmSKMeanMax
-from pytracking.parameter.segm_sk_meanmax import default_params_ep as vot_params
+from pytracking.tracker.segm_sk3x3_meanmax_adaptive import SegmSK3x3MeanMaxAdaptive
+from pytracking.parameter.segm_sk3x3_meanmax_adaptive import default_params_ep as vot_params
 
 
 def rect_to_poly(rect):
@@ -21,14 +21,12 @@ def rect_to_poly(rect):
     return [x0, y0, x1, y1, x2, y2, x3, y3]
 
 def parse_sequence_name(image_path):
-    # idx = image_path.find('/color/')
-    # return image_path[idx - image_path[:idx][::-1].find('/'):idx], idx
-    return os.path.dirname(image_path).split(os.sep)[-1]
+    idx = image_path.find('/color/')
+    return image_path[idx - image_path[:idx][::-1].find('/'):idx], idx
 
-def parse_frame_name(image_path):
-    # frame_name = image_path[idx + len('/color/'):]
-    # return frame_name[:frame_name.find('.')]
-    return os.path.basename(image_path).split('.')[0]
+def parse_frame_name(image_path, idx):
+    frame_name = image_path[idx + len('/color/'):]
+    return frame_name[:frame_name.find('.')]
 
 # MAIN
 handle = vot.VOT("polygon")
@@ -39,7 +37,7 @@ imagefile = handle.frame()
 if not imagefile:
     sys.exit(0)
 
-params = vot_params.parameters(21)
+params = vot_params.parameters(40)
 
 gt_rect = [round(selection.points[0].x, 2), round(selection.points[0].y, 2),
            round(selection.points[1].x, 2), round(selection.points[1].y, 2),
@@ -48,15 +46,13 @@ gt_rect = [round(selection.points[0].x, 2), round(selection.points[0].y, 2),
 
 image = cv2.cvtColor(cv2.imread(imagefile), cv2.COLOR_BGR2RGB)
 
-sequence_name = parse_sequence_name(imagefile)
-frame_name = parse_frame_name(imagefile)
+sequence_name, idx_ = parse_sequence_name(imagefile)
+frame_name = parse_frame_name(imagefile, idx_)
 
-params.masks_save_path = os.path.join('/home/slz/GitHub/d3s/save/masks', params.tracker_name, 'default_params_ep0021')
-params.save_mask = True
-# params.masks_save_path = ''
-# params.save_mask = False
+params.masks_save_path = ''
+params.save_mask = False
 
-tracker = SegmSKMeanMax(params)
+tracker = SegmSK3x3MeanMaxAdaptive(params)
 
 # tell the sequence name to the tracker (to save segmentation masks to the disk)
 tracker.sequence_name = sequence_name
@@ -72,7 +68,7 @@ while True:
     image = cv2.cvtColor(cv2.imread(imagefile), cv2.COLOR_BGR2RGB)
 
     # tell the frame name to the tracker (to save segmentation masks to the disk)
-    frame_name = parse_frame_name(imagefile)
+    frame_name = parse_frame_name(imagefile, idx_)
     tracker.frame_name = frame_name
 
     prediction = tracker.track(image)

@@ -2,9 +2,10 @@ import os
 
 import cv2
 import numpy as np
+import pytracking.utils.attach_mask as am
 
 
-def save_mask(mask, mask_real, segm_crop_sz, bb, img_w, img_h, masks_save_path, sequence_name, frame_name):
+def save_mask(image, mask, mask_real, segm_crop_sz, bb, img_w, img_h, masks_save_path, sequence_name, frame_name):
     if mask is not None:
         M_sel = cv2.dilate(mask, np.ones((7, 7), np.uint8), iterations=1)
         mask_resized = (cv2.resize((M_sel * mask_real).astype(np.float32), (segm_crop_sz, segm_crop_sz),
@@ -53,5 +54,7 @@ def save_mask(mask, mask_real, segm_crop_sz, bb, img_w, img_h, masks_save_path, 
     mask_save_dir = os.path.join(masks_save_path, sequence_name)
     if not os.path.exists(mask_save_dir):
         os.makedirs(mask_save_dir)
+    save_mask_image = am.attach_mask(image, image_mask * 255)
+    save_mask_image = cv2.cvtColor(save_mask_image, cv2.COLOR_RGB2BGR)
     mask_save_path = os.path.join(mask_save_dir, '%s.png' % frame_name)
-    cv2.imwrite(mask_save_path, image_mask)
+    cv2.imwrite(mask_save_path, save_mask_image)

@@ -17,26 +17,15 @@ import ltr.data.processing_utils as prutils
 from ltr import load_network
 
 from pytracking.bbox_fit import fit_bbox_to_mask
-from pytracking.mask_to_disk import save_mask
+# from pytracking.mask_to_disk import save_mask
+from pytracking.mask_image_to_disk import save_mask
 
 
-class NewSegm(BaseTracker):
-    """
-    ·初始化特征过滤器特征
-    ·调用参数中设置的特征过滤器的初始化方法
-    ·仅调用一次
-    ·BaseTracker 保证本类在创建时获取到参数，__init__(self, params) 方法
-    """
-
+class SegmSK3x3MeanMaxAdaptive(BaseTracker):
     def initialize_features(self):
         if not getattr(self, 'features_initialized', False):
             self.params.features_filter.initialize()
         self.features_initialized = True
-
-    """
-    ·初始化 tracker，同时初始化 tracker 参数中用到的组件
-    
-    """
 
     def initialize(self, image, state, init_mask=None, *args, **kwargs):
 
@@ -59,8 +48,7 @@ class NewSegm(BaseTracker):
         tic = time.time()
 
         self.rotated_bbox = True
-        # 根据输入的边界框种类（(x,y,w,h)/(p1,p2,p3,p4)）计算中心位置、目标大小等信息
-        # 边界框是多边形时
+
         if len(state) == 8:
             self.gt_poly = np.array(state)
             x_ = np.array(state[::2])
@@ -80,7 +68,6 @@ class NewSegm(BaseTracker):
             if init_mask is not None:
                 self.rotated_bbox = False
 
-        # 边界框是矩形框时
         elif len(state) == 4:
             state[0] -= 1
             state[1] -= 1
@@ -95,40 +82,26 @@ class NewSegm(BaseTracker):
 
             self.rotated_bbox = False
 
-        # 设置搜索区域面积，搜索区域面积根据目标宽高的倍数乘积得到
         # Set search area
         self.target_scale = 1.0
         search_area = torch.prod(self.target_sz * self.params.search_area_scale).item()
-        # 当计算出的搜索区域面积超出了最大图像样本面积时，将目标尺度设置为搜索区域面积相对于最大图像样本面积的倍数
-        # 计算出的目标尺度，是目标在宽和高两个参数上的尺度（倍数），而不是目标区域面积的尺度
         if search_area > self.params.max_image_sample_size:
             self.target_scale = math.sqrt(search_area / self.params.max_image_sample_size)
         elif search_area < self.params.min_image_sample_size:
             self.target_scale = math.sqrt(search_area / self.params.min_image_sample_size)
 
-        # 计算出新的目标宽高
-        # 根据作者注释，推测是计算出目标在 最大/最小图像样本大小 尺度下的尺度，比如目标过大的时候，其计算出的搜索区域也会很大（根据目标宽高的倍数计算得到），
-        # 那么需要得到目标在最大图像样本大小这个参考系中的新大小，因此需要对目标大小做一定的缩小处理，小于最小图像样本大小同理。
-        # 也就是把 超出图像样本大小范围 的目标放缩回图像样本大小范围内的大小，使得不同大小的目标都放缩到一个统一的范围中。
         # Target size in base scale
         self.base_target_sz = self.target_sz / self.target_scale
 
-        # 获取到最大的特征步长，由于作者使用了多尺度特征，即提取 backbone 网络中不同感受野大小的卷积层输出特征，不同感受野特征对应的步长不同
-        # 越深层的输出的特征步长越大，参数中设置仅提取 layer3 层特征，那么这里的 feat_max_stride 的值对应为 16
         # Use odd square search area and set sizes
         feat_max_stride = max(self.params.features_filter.stride())
-        # 根据搜索区域形状、目标基本大小和搜索区域面积尺度 计算出相应的图像样本大小
-        # 计算即将输入网络的图像样本大小，将原始目标大小乘以搜索区域尺度，再根据面积相等条件规范化为相应的正方形大小
         if getattr(self.params, 'search_area_shape', 'square') == 'square':
             self.img_sample_sz = torch.round(
                 torch.sqrt(torch.prod(self.base_target_sz * self.params.search_area_scale))) * torch.ones(2)
-        # 搜索区域设置为矩形时，图像样本大小为目标基本大小与搜索区域尺度的乘积
         elif self.params.search_area_shape == 'initrect':
             self.img_sample_sz = torch.round(self.base_target_sz * self.params.search_area_scale)
         else:
             raise ValueError('Unknown search area shape')
-        # 根据特征大小是否为奇数设置图像样本大小
-        # 参数注释中解释了，如果提取特征的卷积核大小为偶数，那么 feature_size_odd 为 False，将图像样本大小设置为偶数
         if self.params.feature_size_odd:
             self.img_sample_sz += feat_max_stride - self.img_sample_sz % (2 * feat_max_stride)
         else:
@@ -136,14 +109,10 @@ class NewSegm(BaseTracker):
 
         # Set sizes
         self.img_support_sz = self.img_sample_sz
-        # 根据输入的图像样本大小得到特征大小
         self.feature_sz = self.params.features_filter.size(self.img_sample_sz)
         self.output_sz = self.params.score_upsample_factor * self.img_support_sz  # Interpolated size of the output
-        # 获取卷积核大小，这里是 4x4
         self.kernel_size = self.fparams.attribute('kernel_size')
 
-        # 优化器选项设置
-        # 优化器指的是跟踪过程中模型更新所使用的优化器
         # Optimization options
         self.params.precond_learning_rate = self.fparams.attribute('learning_rate')
         if self.params.CG_forgetting_rate is None or max(self.params.precond_learning_rate) >= 1:
@@ -152,8 +121,6 @@ class NewSegm(BaseTracker):
             self.params.direction_forget_factor = (1 - max(
                 self.params.precond_learning_rate)) ** self.params.CG_forgetting_rate
 
-        # 设置输出窗函数
-        # 输出窗函数是指对模型预测的结果进行加窗，参数中还有对特征进行加窗的设置
         self.output_window = None
         if getattr(self.params, 'window_output', False):
             if getattr(self.params, 'use_clipped_window', False):
@@ -172,30 +139,21 @@ class NewSegm(BaseTracker):
 
         # Setup scale bounds
         self.image_sz = torch.Tensor([im.shape[2], im.shape[3]])
-        # 设置图像的最小和最大尺度因子
         self.min_scale_factor = torch.max(10 / self.base_target_sz)
         self.max_scale_factor = torch.min(self.image_sz / self.base_target_sz)
 
-        # 抽取经过变换的图像样本（整幅图像），生成初始样本集
-        # 根据参数中 augmentation 的变换参数生成相应的变换样本
         # Extract and transform sample
         x = self.generate_init_samples(im)
 
-        # 初始化投影矩阵
         # Initialize projection matrix
         self.init_projection_matrix(x)
 
-        # 使用窗函数预处理前面生成的初始样本，得到训练样本
-        # d3s 没有对样本进行窗函数处理
         # Transform to get the training sample
         train_x = self.preprocess_sample(x)
 
-        # 初始化标签函数，得到训练样本对应的标签
-        # 仅返回初始样本的标签
         # Generate label function
         init_y = self.init_label_function(train_x)
 
-        # 初始化训练样本集
         # Init memory
         self.init_memory(train_x)
 
@@ -229,7 +187,6 @@ class NewSegm(BaseTracker):
                                                        True) and self.params.use_projection_matrix
         optimizer = getattr(self.params, 'optimizer', 'GaussNewtonCG')
 
-        # 使用优化算法得到投影矩阵 phi_1
         # Setup factorized joint optimization
         if self.params.update_projection_matrix:
             self.joint_problem = FactorizedConvProblem(self.init_training_samples, init_y, self.filter_reg,
@@ -268,7 +225,6 @@ class NewSegm(BaseTracker):
                         f.write(val_str + '\n')
                 raise RuntimeError('Exiting')
 
-        # 使用投影矩阵对样本进行投影变换
         # Re-project samples with the new projection matrix
         compressed_samples = self.project_sample(self.init_training_samples, self.projection_matrix)
         for train_samp, init_samp in zip(self.training_samples, compressed_samples):
@@ -276,7 +232,6 @@ class NewSegm(BaseTracker):
 
         self.hinge_mask = None
 
-        # 初始化响应矩阵 phi_2
         # Initialize optimizer
         self.conv_problem = ConvProblem(self.training_samples, self.y, self.filter_reg, self.sample_weights,
                                         self.response_activation)
@@ -539,19 +494,12 @@ class NewSegm(BaseTracker):
         return operation.conv2d(x, proj_matrix).apply(self.projection_activation)
 
     def init_learning(self):
-        """
-        初始化学习设置，包含特征的窗函数，滤波器正则化因子，投影矩阵和激活函数等
-        """
-        # 设置特征窗函数，直接设置，d3s 没有根据参数中的开关动态设置
         # Get window function
         self.feature_window = TensorList([dcf.hann2d(sz).to(self.params.device) for sz in self.feature_sz])
 
-        # 滤波器正则化因子 lambda
         # Filter regularization
         self.filter_reg = self.fparams.attribute('filter_reg')
 
-        # 目标分类网络，预测目标的二维位置，通过在线学习得到，与目标的大小和尺度无关，通过最小化错误检测来提升模型鲁棒性
-        # 设置投影激活函数，即 Atom 方法中对多通道卷积后输出结果的激活方法，d3s 参数中指定为恒等映射
         # Activation function after the projection matrix (phi_1 in the paper)
         projection_activation = getattr(self.params, 'projection_activation', 'none')
         if isinstance(projection_activation, tuple):
@@ -568,8 +516,6 @@ class NewSegm(BaseTracker):
         else:
             raise ValueError('Unknown activation')
 
-        # 响应激活函数，对应于 Atom 分类网络两层多通道卷积的第二层输出的激活函数（响应激活函数），经过该激活函数后，产生目标的二维位置预测结果
-        # d3s 设置为 ('mlu', 0.05)
         # Activation function after the output scores (phi_2 in the paper)
         response_activation = getattr(self.params, 'response_activation', 'none')
         if isinstance(response_activation, tuple):
@@ -591,7 +537,6 @@ class NewSegm(BaseTracker):
 
         # Compute augmentation size
         aug_expansion_factor = getattr(self.params, 'augmentation_expansion_factor', None)
-        # 样本扩展大小，即经过扩展后样本图像的大小，跟先前计算出的图像样本大小
         aug_expansion_sz = self.img_sample_sz.clone()
         aug_output_sz = None
         if aug_expansion_factor is not None and aug_expansion_factor != 1:
@@ -600,15 +545,13 @@ class NewSegm(BaseTracker):
             aug_expansion_sz = aug_expansion_sz.float()
             aug_output_sz = self.img_sample_sz.long().tolist()
 
-        # 随机偏移变换
         # Random shift operator
         get_rand_shift = lambda: None
         random_shift_factor = getattr(self.params, 'random_shift_factor', 0)
         if random_shift_factor > 0:
             get_rand_shift = lambda: ((torch.rand(2) - 0.5) * self.img_sample_sz * random_shift_factor).long().tolist()
 
-        # 对图像样本添加各种变换，平移、相对平移、水平翻转、模糊、尺度、旋转等
-        # Create transformations
+        # Create transofmations
         self.transforms = [augmentation.Identity(aug_output_sz)]
         if 'shift' in self.params.augmentation:
             self.transforms.extend(
@@ -629,7 +572,7 @@ class NewSegm(BaseTracker):
         if 'rotate' in self.params.augmentation:
             self.transforms.extend([augmentation.Rotate(angle, aug_output_sz, get_rand_shift()) for angle in
                                     self.params.augmentation['rotate']])
-        # 得到经过变换的样本集合
+
         init_samples = self.params.features_filter.extract_transformed(im, self.pos.round(), self.target_scale,
                                                                        aug_expansion_sz, self.transforms)
 
@@ -651,9 +594,6 @@ class NewSegm(BaseTracker):
         return init_samples
 
     def init_projection_matrix(self, x):
-        """
-        投影矩阵，用于压缩特征维度
-        """
         # Set if using projection matrix
         self.params.use_projection_matrix = getattr(self.params, 'use_projection_matrix', True)
 
@@ -680,13 +620,14 @@ class NewSegm(BaseTracker):
             self.projection_matrix = TensorList([None] * len(x))
 
     def init_label_function(self, train_x):
-        # 标签大小为 16x16
         # Allocate label function
         self.y = TensorList([x.new_zeros(self.params.sample_memory_size, 1, x.shape[2], x.shape[3]) for x in train_x])
 
         # Output sigma factor
         output_sigma_factor = self.fparams.attribute('output_sigma_factor')
-        self.sigma = (self.feature_sz / self.img_support_sz * self.base_target_sz).prod().sqrt() * output_sigma_factor * torch.ones(2)
+        self.sigma = (
+                             self.feature_sz / self.img_support_sz * self.base_target_sz).prod().sqrt() * output_sigma_factor * torch.ones(
+            2)
 
         # Center pos in normalized coords
         target_center_norm = (self.pos - self.pos.round()) / (self.target_scale * self.img_support_sz)
@@ -714,8 +655,6 @@ class NewSegm(BaseTracker):
         for sw, init_sw, num in zip(self.sample_weights, self.init_sample_weights, self.num_init_samples):
             sw[:num] = init_sw
 
-        # 初始化训练样本集，维度为 250 x 64 x 16 x 16
-        # 表示样本集容量为 250，每个样本的通道数为 64，空间大小为 16 x 16
         # Initialize memory
         self.training_samples = TensorList(
             [x.new_zeros(self.params.sample_memory_size, cdim, x.shape[2], x.shape[3]) for x, cdim in
@@ -825,11 +764,10 @@ class NewSegm(BaseTracker):
         return 1 - np.exp(-((np.power(X, p) / (sz_weight * w ** p)) + (np.power(Y, p) / (sz_weight * h ** p))))
 
     def init_segmentation(self, image, bb, init_mask=None):
-        # 获取目标图像样本
+
         init_patch_crop, f_ = prutils.sample_target(image, np.array(bb), self.params.segm_search_area_factor,
                                                     output_sz=self.params.segm_output_sz)
 
-        # 创建初始掩码图
         self.segmentation_task = False
         if init_mask is not None:
             mask = copy.deepcopy(init_mask).astype(np.float32)
@@ -855,15 +793,15 @@ class NewSegm(BaseTracker):
                 p4 = [bb[0], bb[1] + bb[3]]
                 cv2.fillConvexPoly(mask, np.array([p1, p2, p3, p4], dtype=np.int32), 1)
                 mask = mask.astype(np.float32)
-        # 获取目标掩码图（在采样图像范围内）
+
         init_mask_patch_np, patch_factor_init = prutils.sample_target(mask, np.array(bb),
                                                                       self.params.segm_search_area_factor,
                                                                       output_sz=self.params.segm_output_sz, pad_val=0)
 
         # network was renamed therefore we need to specify constructor_module and constructor_fun_name
         segm_net, _ = load_network(self.params.segm_net_path, backbone_pretrained=False,
-                                   constructor_module='ltr.models.segm.segm',
-                                   constructor_fun_name='segm_resnet50')
+                                   constructor_module='ltr.models.segm_sk3x3_meanmax_adaptive.segm_sk3x3_meanmax_adaptive',
+                                   constructor_fun_name='segm_sk3x3_meanmax_adaptive_resnet50')
 
         if self.params.use_gpu:
             segm_net.cuda()
@@ -926,7 +864,7 @@ class NewSegm(BaseTracker):
                 # Obtain segmentation prediction
                 segm_pred = segm_net.segm_predictor(test_feat_segm, train_feat_segm, train_masks, test_dist_map)
 
-                # softmax on the prediction (during training this is done internally when calculating loss)
+                # softmax on the prediction (during training this is done internaly when calculating loss)
                 # take only the positive channel as predicted segmentation mask
                 mask = F.softmax(segm_pred, dim=1)[0, 0, :, :].cpu().numpy()
                 mask = (mask > self.params.init_segm_mask_thr).astype(np.float32)
@@ -946,8 +884,10 @@ class NewSegm(BaseTracker):
 
                 if self.params.save_mask:
                     segm_crop_sz = math.ceil(math.sqrt(bb[2] * bb[3]) * self.params.segm_search_area_factor)
-                    save_mask(None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                    save_mask(image, None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
                               self.params.masks_save_path, self.sequence_name, self.frame_name)
+                    # save_mask(None, mask, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                    #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
                 mask_gpu = torch.unsqueeze(torch.unsqueeze(torch.tensor(mask), dim=0), dim=0).to(self.params.device)
                 train_masks = [mask_gpu]
@@ -1038,8 +978,10 @@ class NewSegm(BaseTracker):
             # save mask to disk
             # Note: move this below if evaluating on VOT
             if self.params.save_mask:
-                save_mask(None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                save_mask(image, None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
                           self.params.masks_save_path, self.sequence_name, self.frame_name)
+                # save_mask(None, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
         if len(cnt_area) > 0 and len(contours) != 0 and np.max(cnt_area) > 50:  # 1000:
             contour = contours[np.argmax(cnt_area)]  # use max area polygon
@@ -1057,8 +999,10 @@ class NewSegm(BaseTracker):
                     # save mask to disk
                     # Note: move this below if evaluating on VOT
                     if self.params.save_mask:
-                        save_mask(mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                        save_mask(image, mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
                                   self.params.masks_save_path, self.sequence_name, self.frame_name)
+                        # save_mask(mask, mask_real, segm_crop_sz, bb, image.shape[1], image.shape[0],
+                        #           self.params.masks_save_path, self.sequence_name, self.frame_name)
 
                 t_opt_start_ = time.time()
                 prbox_opt_ = fit_bbox_to_mask(mask.astype(np.int32), rotated=self.rotated_bbox)
@@ -1123,10 +1067,6 @@ class NewSegm(BaseTracker):
         return None
 
     def poly_to_aabbox(self, x_, y_):
-        """
-        将多边形表示 (p1,p2,p3,p4) 转化为 aabb 盒表示 (x,y,w,h)，其中 (x,y) 表示目标中心位置，(w,h) 表示目标宽高
-        首先计算多边形的面积，根据多边形面积占外接矩形的比例计算等面积的矩形框的长和宽，最终得到转换后的矩形框中心位置和长宽
-        """
         # keep the center and area of the polygon
         # change aspect ratio of the original bbox
         cx = np.mean(x_)

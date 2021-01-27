@@ -42,3 +42,15 @@ def nfs():
     trackers = [Tracker('segm_sk_meanmax', 'default_params_ep0021', 6)]
     dataset = NFSDataset()
     return trackers, dataset
+
+
+def trackingnet_up5():
+    trackers = [Tracker('segm_sk_meanmax', 'default_params_ep0021_up5', 14)]
+    dataset = TrackingNetDataset()
+    return trackers, dataset
+
+
+def trackingnet_up3():
+    trackers = [Tracker('segm_sk_meanmax', 'default_params_ep0021_up3', 24)]
+    dataset = TrackingNetDataset()
+    return trackers, dataset
